@@ -14,7 +14,7 @@ x1, y1 = 150, 100
 x2, y2 = 450, 400
 
 print("Webcam is ON")
-print("Press 'q' anytime to quit.\n")
+print("Type 'exit' to quit.\n")
 
 while True:
 
@@ -27,10 +27,24 @@ while True:
     os.makedirs(class_dir, exist_ok=True)
 
     print(f"Ready to collect data for class: '{class_name}'")
-    print("Press 's' to start capturing images...")
+    print("Video is ON. Type 's' and press Enter to start capturing images...\n")
 
     
-    while True:
+    start = False
+    user_input_ready = False
+    user_input_value = None
+    
+    import threading
+    
+    def read_input():
+        global user_input_ready, user_input_value
+        user_input_value = input().strip().lower()
+        user_input_ready = True
+    
+    input_thread = threading.Thread(target=read_input, daemon=True)
+    input_thread.start()
+    
+    while not start:
         ret, frame = cap.read()
         if not ret:
             continue
@@ -38,21 +52,43 @@ while True:
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.putText(frame, f"Class: {class_name} | Press 's' to start",
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        cv2.imshow("Data Collection", frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('s'):
-            break
-        elif cv2.waitKey(1) & 0xFF == ord('q'):
-            cap.release()
-            cv2.destroyAllWindows()
-            exit()
+        try:
+            cv2.imshow("Data Collection", frame)
+            cv2.waitKey(1)
+        except:
+            pass
+        
+        if user_input_ready:
+            if user_input_value == 's':
+                start = True
+            elif user_input_value == 'q' or user_input_value == 'exit':
+                cap.release()
+                cv2.destroyAllWindows()
+                exit()
+            user_input_ready = False
+            input_thread = threading.Thread(target=read_input, daemon=True)
+            input_thread.start()
 
 
     # Start capturing images
     counter = 0
-    print("Capturing images... Press 'q' to stop for this class.")
+    print("Capturing images... Type 'q' and press Enter to stop for this class.")
+    
+    import threading
+    stop_capture = False
+    
+    def wait_for_stop():
+        global stop_capture
+        while not stop_capture:
+            user_input = input().strip().lower()
+            if user_input == 'q':
+                stop_capture = True
+                break
+    
+    stop_thread = threading.Thread(target=wait_for_stop, daemon=True)
+    stop_thread.start()
 
-    while True:
+    while not stop_capture:
         ret, frame = cap.read()
         if not ret:
             continue
@@ -69,12 +105,18 @@ while True:
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.putText(frame, f"Class: {class_name} | Captured: {counter}",
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        cv2.imshow("Data Collection", frame)
+        try:
+            cv2.imshow("Data Collection", frame)
+            cv2.waitKey(25)
+        except:
+            pass
+        
+        if counter >= 100:  # Collect 100 images per class automatically
+            print(f"Collected 100 images for class '{class_name}'")
+            stop_capture = True
 
-        key = cv2.waitKey(25) & 0xFF
-        if key == ord('q'): 
-            print(f"Stopped capturing '{class_name}'. Total: {counter} images.\n")
-            break
+    print(f"Stopped capturing '{class_name}'. Total: {counter} images.\n")
+    stop_capture = False
 
 print("\nData collection finished.")
 cap.release()
