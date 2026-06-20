@@ -31,6 +31,8 @@ labels_dict = {
 
 # Speech engine
 engine = pyttsx3.init()
+# Slow down the speech rate (default is usually around 200)
+engine.setProperty('rate', 140)
 
 # Fixed rectangle for detection
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -124,7 +126,14 @@ while True:
 
             # Append character to string ONLY if a successful prediction was made
             if predicted_char:
-                detected_string += predicted_char
+                # Prevent spamming the same word consecutively while holding the sign
+                words = detected_string.split()
+                if not words or words[-1] != predicted_char:
+                    if detected_string:
+                        detected_string += " " + predicted_char
+                    else:
+                        detected_string += predicted_char
+
                 last_prediction_time = current_time
 
                 # Print the accumulating string to the console
