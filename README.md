@@ -45,7 +45,7 @@ python dataset_creation.py
 ```
 
 ### 3. Train the Classifier
-Train the Random Forest model on your new data. It will automatically save to `model.p`.
+Train the Random Forest model on your new data. The script will automatically evaluate the model on a test split, print a detailed **Classification Report (Accuracy, Precision, Recall)**, and save it to `model.p`.
 ```bash
 python train_classifier.py
 ```
