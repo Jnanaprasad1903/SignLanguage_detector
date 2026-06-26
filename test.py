@@ -34,14 +34,7 @@ engine = pyttsx3.init()
 # Slow down the speech rate (default is usually around 200)
 engine.setProperty('rate', 140)
 
-# Fixed rectangle for detection
-frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-rect_size = 300
-rect_x1 = (frame_width - rect_size) // 2
-rect_y1 = (frame_height - rect_size) // 2
-rect_x2 = rect_x1 + rect_size
-rect_y2 = rect_y1 + rect_size
+
 
 # Detection timing
 last_prediction_time = 0
@@ -68,36 +61,58 @@ while True:
     # Flip frame for a natural mirror-like view
     frame = cv2.flip(frame, 1)
 
-    # Draw fixed rectangle
-    cv2.rectangle(frame, (rect_x1, rect_y1), (rect_x2, rect_y2), (0, 255, 0), 2)
-
-    # Crop ROI
-    roi = frame[rect_y1:rect_y2, rect_x1:rect_x2]
-    frame_rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(frame_rgb)
 
     if results.multi_hand_landmarks:
-        # Drawing landmarks on ROI (the cropped part)
+        all_x = []
+        all_y = []
+        
         for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
-                roi,
+                frame,
                 hand_landmarks,
                 mp_hands.HAND_CONNECTIONS,
                 mp_drawing_styles.get_default_hand_landmarks_style(),
                 mp_drawing_styles.get_default_hand_connections_style()
             )
-
-        # Data extraction for prediction
-        for hand_landmarks in results.multi_hand_landmarks:
             for lm in hand_landmarks.landmark:
-                # Normalize coordinates (0 to 1)
-                x_.append(lm.x)
-                y_.append(lm.y)
+                all_x.append(lm.x)
+                all_y.append(lm.y)
+                
+        min_x = min(all_x) if all_x else 0
+        min_y = min(all_y) if all_y else 0
+        
+        left_hand = None
+        right_hand = None
+        
+        for idx, hand_handedness in enumerate(results.multi_handedness):
+            label = hand_handedness.classification[0].label
+            if label == "Left" and left_hand is None:
+                left_hand = results.multi_hand_landmarks[idx]
+            elif label == "Right" and right_hand is None:
+                right_hand = results.multi_hand_landmarks[idx]
+            else:
+                if left_hand is None:
+                    left_hand = results.multi_hand_landmarks[idx]
+                else:
+                    right_hand = results.multi_hand_landmarks[idx]
+                    
+        data_aux = []
+        
+        if left_hand:
+            for lm in left_hand.landmark:
+                data_aux.append(lm.x - min_x)
+                data_aux.append(lm.y - min_y)
+        else:
+            data_aux.extend([0.0] * 42)
             
-            # Create auxiliary data (normalized to min x/y)
-            for lm in hand_landmarks.landmark:
-                data_aux.append(lm.x - min(x_))
-                data_aux.append(lm.y - min(y_))
+        if right_hand:
+            for lm in right_hand.landmark:
+                data_aux.append(lm.x - min_x)
+                data_aux.append(lm.y - min_y)
+        else:
+            data_aux.extend([0.0] * 42)
 
         current_time = time.time()
         
@@ -160,7 +175,7 @@ while True:
     if current_display_confidence is not None:
         display_text += f" ({current_display_confidence*100:.1f}%)"
         
-    cv2.putText(frame, display_text, (rect_x1, rect_y1 - 10),
+    cv2.putText(frame, display_text, (20, 80),
                 cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3, cv2.LINE_AA)
 
     cv2.imshow('ASL Detector | Press "q" to Quit', frame)
