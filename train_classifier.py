@@ -2,7 +2,7 @@ import pickle
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 import numpy as np
 
 
@@ -21,7 +21,10 @@ y_predict = model.predict(x_test)
 
 score = accuracy_score(y_predict, y_test)
 
-print('{}% of samples were classified correctly !'.format(score * 100))
+print(f"\n✅ Training Complete!")
+print(f"Overall Accuracy: {score * 100:.2f}%\n")
+print("Detailed Classification Report:")
+print(classification_report(y_test, y_predict, zero_division=0))
 
 f = open('model.p', 'wb')
 pickle.dump({'model': model}, f)
